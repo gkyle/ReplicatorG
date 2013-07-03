@@ -158,7 +158,8 @@ class CoolRepository:
 		self.nameOfCoolStartFile = settings.StringSetting().getFromValue('Name of Cool Start File:', self, 'cool_start.gcode')
 		settings.LabelSeparator().getFromRepository(self)
 		self.orbitalOutset = settings.FloatSpin().getFromValue(1.0, 'Orbital Outset (millimeters):', self, 5.0, 2.0)
-		self.turnFanOnAtBeginning = settings.BooleanSetting().getFromValue('Turn Fan On at Beginning', self, True)
+		self.turnFanOn = settings.BooleanSetting().getFromValue('Turn Fan On', self, True)
+		self.turnFanOnAtLayer = settings.IntSpin().getFromValue(0, 'Turn Fan On Before Layer', self, 1000, 0)
 		self.turnFanOffAtEnding = settings.BooleanSetting().getFromValue('Turn Fan Off at Ending', self, True)
 		self.executeTitle = 'Cool'
 
@@ -329,8 +330,6 @@ class CoolSkein:
 				self.oldFlowRate = float(splitLine[1][1 :])
 			elif firstWord == '(<edgeWidth>':
 				self.edgeWidth = float(splitLine[1])
-				if self.repository.turnFanOnAtBeginning.value:
-					self.distanceFeedRate.addLine('M106')
 			elif firstWord == '(</extruderInitialization>)':
 				self.distanceFeedRate.addTagBracketedProcedure('cool')
 				return
@@ -380,6 +379,9 @@ class CoolSkein:
 			self.boundaryLayer = euclidean.LoopLayer(z)
 			self.highestZ = max(z, self.highestZ)
 			self.distanceFeedRate.addLinesSetAbsoluteDistanceMode(self.coolEndLines)
+			if self.repository.turnFanOn.value:
+				if self.layerCount.layerIndex == self.repository.turnFanOnAtLayer.value:
+					self.distanceFeedRate.addLine("M106")
 			return
 		elif firstWord == '(</layer>)':
 			self.isBridgeLayer = False
